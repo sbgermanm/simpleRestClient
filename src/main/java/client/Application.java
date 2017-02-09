@@ -31,7 +31,6 @@ public class Application {
             executorService.execute(new Runnable() {
                 public void run() {
                     MultiValueMap<String, String> params = new LinkedMultiValueMap<String, String>();
-                    params.clear();
                     params.set("name", "sebas_" + counter.getAndIncrement());
 
                     ResponseEntity<Dato> datoResponseEntity = restTemplate.postForEntity("http://localhost:8080/dameargo", params, Dato.class);
