@@ -26,7 +26,7 @@ public class Application {
 
 
 
-        ExecutorService executorService = Executors.newFixedThreadPool(5000);
+        ExecutorService executorService = Executors.newFixedThreadPool(8);
         for (int i = 0; i < 5000; i++) {
             executorService.execute(new Runnable() {
                 public void run() {
