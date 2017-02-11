@@ -26,14 +26,17 @@ public class Application {
 
 
 
-        ExecutorService executorService = Executors.newFixedThreadPool(8);
-        for (int i = 0; i < 5000; i++) {
+        ExecutorService executorService = Executors.newFixedThreadPool(1000);
+        for (int i = 0; i < 1000; i++) {
             executorService.execute(new Runnable() {
                 public void run() {
                     MultiValueMap<String, String> params = new LinkedMultiValueMap<String, String>();
                     params.set("name", "sebas_" + counter.getAndIncrement());
 
-                    ResponseEntity<Dato> datoResponseEntity = restTemplate.postForEntity("http://localhost:8080/dameargo", params, Dato.class);
+//                    ResponseEntity<Dato> datoResponseEntity = restTemplate.postForEntity("http://localhost:8080/onlySendData", params, Dato.class);
+
+                    ResponseEntity<Dato> datoResponseEntity = restTemplate.postForEntity("http://localhost:8080/deferred", params, Dato.class);
+
                     log.info("[" + datoResponseEntity.getBody().toString() + "]");
                 }
             });
