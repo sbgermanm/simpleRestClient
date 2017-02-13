@@ -2,46 +2,92 @@ package client;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import javax.annotation.Resource;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static client.Application.RestType.COMPLETABLE;
+
 public class Application {
+    enum RestType {ONLY_SEND_DATA(new RestPostOnlySendData()), COMPLETABLE(new RestPostCompletable()), DEFERED(new RestPostDeferred());
+        private final RestPost restPost;
+
+        RestType(RestPost restPost) {
+            this.restPost = restPost;
+        }
+
+        public RestPost getRestPost() {
+            return restPost;
+        }
+    }
+
 
     private static final Logger log = LoggerFactory.getLogger(Application.class);
+    public static final int N_THREADS = 1000;
+    public static final int ITEMS_TO_SEND = 5;
+    static RestPost restPost =  COMPLETABLE.getRestPost();
 
-    public static void main(String args[]) {
+    public static void main(String args[]) throws InterruptedException, ExecutionException {
+
+        Application app = new Application();
+        app.execute();
+    }
+
+    public Application() {
+
+    }
+
+
+    private void execute() throws InterruptedException {
         RestTemplate restTemplate = new RestTemplate();
         AtomicLong counter = new AtomicLong();
 
-//        for (int i = 0; i < 500; i++) {
-//            ResponseEntity<Dato> datoResponseEntity = restTemplate.postForEntity("http://localhost:8080/dameargo", params, Dato.class);
-//            log.info("[" + datoResponseEntity.getBody().toString() + "]");
-//        }
 
+        AtomicLong procesados = new AtomicLong();
 
-
-        ExecutorService executorService = Executors.newFixedThreadPool(1000);
-        for (int i = 0; i < 1000; i++) {
-            executorService.execute(new Runnable() {
-                public void run() {
+        ExecutorService executorService = Executors.newFixedThreadPool(N_THREADS);
+        CompletionService completionService = new ExecutorCompletionService(executorService);
+        for (int i = 0; i < ITEMS_TO_SEND; i++) {
+            completionService.submit(new Callable() {
+                public String call() {
+                    String value = "sebas_" + counter.getAndIncrement();
+                    String resultado = "Error procesando " + value;
                     MultiValueMap<String, String> params = new LinkedMultiValueMap<String, String>();
-                    params.set("name", "sebas_" + counter.getAndIncrement());
-
-//                    ResponseEntity<Dato> datoResponseEntity = restTemplate.postForEntity("http://localhost:8080/onlySendData", params, Dato.class);
-
-                    ResponseEntity<Dato> datoResponseEntity = restTemplate.postForEntity("http://localhost:8080/deferred", params, Dato.class);
-
-                    log.info("[" + datoResponseEntity.getBody().toString() + "]");
+                    params.set("name", value);
+                    log.info("Sending " + value);
+                    try {
+                        ResponseEntity<Dato> datoResponseEntity = restPost.getDatoResponseEntity(params, restTemplate);
+                        resultado = datoResponseEntity.getBody().toString();
+                        log.info("[" + resultado + "]");
+                        procesados.getAndIncrement();
+                    } catch (HttpServerErrorException e) {
+                        log.info("Error procesando " + value);
+                        e.printStackTrace();
+                    }
+                    finally {
+                        return resultado;
+                    }
                 }
             });
         }
+        for (int i = 0; i < ITEMS_TO_SEND; i++) {
+            try {
+                completionService.take().get();
+            } catch (ExecutionException e) {
+                e.printStackTrace();
+            }
+        }
         executorService.shutdown();
+        log.info("procesados totales : " + procesados);
     }
+
 
 }
