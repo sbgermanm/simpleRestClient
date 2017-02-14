@@ -15,6 +15,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static client.Application.RestType.COMPLETABLE;
+import static client.Application.RestType.DEFERED;
 
 public class Application {
     enum RestType {ONLY_SEND_DATA(new RestPostOnlySendData()), COMPLETABLE(new RestPostCompletable()), DEFERED(new RestPostDeferred());
@@ -31,9 +32,9 @@ public class Application {
 
 
     private static final Logger log = LoggerFactory.getLogger(Application.class);
-    public static final int N_THREADS = 1000;
-    public static final int ITEMS_TO_SEND = 5;
-    static RestPost restPost =  COMPLETABLE.getRestPost();
+    public static final int N_THREADS = 50000;
+    public static final int ITEMS_TO_SEND = 50000;
+    static RestPost restPost =  DEFERED.getRestPost();
 
     public static void main(String args[]) throws InterruptedException, ExecutionException {
 
@@ -55,6 +56,9 @@ public class Application {
 
         ExecutorService executorService = Executors.newFixedThreadPool(N_THREADS);
         CompletionService completionService = new ExecutorCompletionService(executorService);
+
+        Long nanosIni = System.nanoTime();
+
         for (int i = 0; i < ITEMS_TO_SEND; i++) {
             completionService.submit(new Callable() {
                 public String call() {
@@ -86,7 +90,12 @@ public class Application {
             }
         }
         executorService.shutdown();
+
+        Long nanosFin = System.nanoTime();
+
+
         log.info("procesados totales : " + procesados);
+        log.info("nanos = " + (nanosFin - nanosIni));
     }
 
 
